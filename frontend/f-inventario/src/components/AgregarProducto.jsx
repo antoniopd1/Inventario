@@ -1,83 +1,95 @@
 import React, { useState } from 'react';
+import useProductStore from '../store/useProductStore';
+import useAuthStore from '../store/useAuthStore';
 
-function AgregarProducto ({ onProductoAgregado })  {
-    const [nombreProducto, setNombreProducto] = useState('');
-    const [mensaje, setMensaje] = useState({ tipo: '', texto: '' }); 
+function AgregarProducto () {
+  const [nombreProducto, setNombreProducto] = useState('');
+  const [cantidadProducto, setCantidadProducto] = useState(0);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        setMensaje({ tipo: '', texto: '' }); 
+  const { addProduct } = useProductStore();
+  const { user, setMessage: setAuthMessage } = useAuthStore();
 
-        if (!nombreProducto.trim()) {
-            setMensaje({ tipo: 'error', texto: 'El nombre del producto no puede estar vacío.' });
-            return;
-        }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-        const nuevoProductoSimulado = {
-            id: Date.now(), 
-            nombre: nombreProducto.trim(),
-            cantidad: 0, 
-            activo: true 
-        };
+    setAuthMessage('');
 
-        console.log('Producto a agregar (simulado):', nuevoProductoSimulado);
-        setMensaje({ tipo: 'success', texto: `"${nuevoProductoSimulado.nombre}" agregado exitosamente con cantidad inicial 0.` });
-        setNombreProducto(''); 
+    if (!nombreProducto.trim()) {
+      setAuthMessage('El nombre del producto no puede estar vacío.');
+      return;
+    }
+    if (cantidadProducto < 0 || isNaN(cantidadProducto)) {
+      setAuthMessage('La cantidad inicial debe ser un número no negativo.');
+      return;
+    }
 
-        if (onProductoAgregado) {
-            onProductoAgregado(nuevoProductoSimulado);
-        }
-    };
+    if (!user || user.rol !== 'administrador') {
+      setAuthMessage('Acceso Denegado: Solo los administradores pueden agregar productos.');
+      return;
+    }
 
-    return (
-        <div className="min-h-screen p-4 bg-purple-50 flex items-center justify-center">
-            <div className="max-w-md w-full mx-auto bg-white p-8 rounded-lg shadow-xl">
-                <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Agregar Nuevo Producto</h2>
+    try {
+      await addProduct({ nombre: nombreProducto.trim(), cantidad: parseInt(cantidadProducto) });
 
-                {mensaje.texto && (
-                    <div className={`p-3 rounded-md mb-4 ${
-                        mensaje.tipo === 'success' ? 'bg-green-100 border border-green-400 text-green-700' : 'bg-red-100 border border-red-400 text-red-700'
-                    }`} role="alert">
-                        {mensaje.texto}
-                    </div>
-                )}
+      setNombreProducto('');
+      setCantidadProducto(0);
+    } catch (error) {
+      console.error("Error inesperado al agregar producto desde el componente:", error);
+    }
+  };
 
-                <form onSubmit={handleSubmit}>
-                    <div className="mb-6">
-                        <label htmlFor="nombreProducto" className="block text-sm font-medium text-gray-700 mb-2">
-                            Nombre del Producto
-                        </label>
-                        <input
-                            type="text"
-                            id="nombreProducto"
-                            name="nombreProducto"
-                            value={nombreProducto}
-                            onChange={(e) => setNombreProducto(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 transition duration-300 ease-in-out placeholder-gray-400 text-gray-800"
-                            placeholder="Ej. Teclado Mecánico RGB"
-                            required
-                        />
-                    </div>
+  return (
+    <div className="min-h-screen p-4 bg-gray-100 flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto bg-white p-8 rounded-lg shadow-xl">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Agregar Nuevo Producto</h2>
 
-                    <div className="mb-6">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Cantidad Inicial</p>
-                        <p className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed">
-                            0 (por defecto al agregar)
-                        </p>
-                    </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-6">
+            <label htmlFor="nombreProducto" className="block text-sm font-medium text-gray-700 mb-2">
+              Nombre del Producto
+            </label>
+            <input
+              type="text"
+              id="nombreProducto"
+              name="nombreProducto"
+              value={nombreProducto}
+              onChange={(e) => setNombreProducto(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-300 ease-in-out placeholder-gray-400 text-gray-800"
+              placeholder="Ej. Teclado Mecánico RGB"
+              required
+            />
+          </div>
 
-                    <div className="text-center">
-                        <button
-                            type="submit"
-                            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition duration-300 ease-in-out transform hover:-translate-y-0.5"
-                        >
-                            Agregar Producto
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
+          <div className="mb-6">
+            <label htmlFor="cantidadProducto" className="block text-sm font-medium text-gray-700 mb-2">
+              Cantidad Inicial
+            </label>
+            <input
+              type="number"
+              id="cantidadProducto"
+              name="cantidadProducto"
+              value={cantidadProducto}
+              onChange={(e) => setCantidadProducto(parseInt(e.target.value) || 0)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-300 ease-in-out placeholder-gray-400 text-gray-800"
+              placeholder="Ej. 100"
+              disabled
+              required
+              min="0"
+            />
+          </div>
+
+          <div className="text-center">
+            <button
+              type="submit"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300 ease-in-out transform hover:-translate-y-0.5"
+            >
+              Agregar Producto
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export default AgregarProducto;
